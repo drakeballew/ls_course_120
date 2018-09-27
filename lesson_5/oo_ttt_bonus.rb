@@ -71,8 +71,8 @@ class Board
     markers.min == markers.max
   end
 
-  def square_at_risk?(squares, computer_marker)
-    markers = squares.select { |square| square.marker == computer_marker }.collect(&:marker)
+  def square_at_risk?(squares, cpu_marker)
+    markers = squares.select { |sq| sq.marker == cpu_marker }.collect(&:marker)
     unmarked = squares.select(&:unmarked?).collect(&:marker)
     return true if markers.empty? && unmarked.size == 1
     false
@@ -82,14 +82,14 @@ class Board
     WINNING_LINES.each do |line|
       squares = @squares.values_at(*line)
       if square_at_risk?(squares, marker)
-        return squares.select { |square| square.marker == Square::INITIAL_MARKER }.first
+        return squares.select { |sq| sq.marker == Square::INITIAL_MARKER }.first
       end
     end
     nil
   end
 
-  def opportune_square?(squares, computer_marker)
-    markers = squares.select { |square| square.marker == computer_marker }.collect(&:marker)
+  def opportune_square?(squares, cpu_marker)
+    markers = squares.select { |sq| sq.marker == cpu_marker }.collect(&:marker)
     unmarked = squares.select(&:unmarked?).collect(&:marker)
     return true if markers.size == 2 && unmarked.size == 1
     false
@@ -99,7 +99,7 @@ class Board
     WINNING_LINES.each do |line|
       squares = @squares.values_at(*line)
       if opportune_square?(squares, marker)
-        return squares.select { |square| square.marker == Square::INITIAL_MARKER }.first
+        return squares.select { |sq| sq.marker == Square::INITIAL_MARKER }.first
       end
     end
     nil
@@ -123,7 +123,7 @@ class Scoreboard
   end
 
   def winning_player(winning_marker)
-    games.select { |k,v| k.marker == winning_marker }.keys.first
+    games.select { |k, _| k.marker == winning_marker }.keys.first
   end
 
   def increment_games(winning_player)
@@ -165,19 +165,22 @@ class Scoreboard
   def set_won?(player)
     return if games[player] != TTTGame::GAMES_IN_SET
     increment_sets(player)
-    puts "#{games.select { |_, v| v == TTTGame::GAMES_IN_SET }.keys.first.name}" \
-          " won the set!"
+    games_in_set = TTTGame::GAMES_IN_SET
+    puts "#{games.select { |_, v| v == games_in_set }.keys.first.name}" \
+         " won the set!"
     reset_games
   end
   # rubocop:enable Naming/AccessorMethodName
 
   def match_won?
-    sets[player1] == TTTGame::SETS_IN_MATCH || sets[player2] == TTTGame::SETS_IN_MATCH
+    sets[player1] == TTTGame::SETS_IN_MATCH ||
+      sets[player2] == TTTGame::SETS_IN_MATCH
   end
 
   def match_end_message
-    puts "#{sets.select { |_, v| v == TTTGame::SETS_IN_MATCH }.keys.first.name}" \
-          " won the match!"
+    sets_in_match = TTTGame::SETS_IN_MATCH
+    puts "#{sets.select { |_, v| v == sets_in_match }.keys.first.name}" \
+         " won the match!"
   end
 end
 
@@ -221,7 +224,7 @@ class Human < Player
       puts "What's your name?"
       response = gets.chomp.strip
       break unless response.empty?
-      puts invalid_entry
+      puts "Invalid entry. Try again."
     end
     self.name = response
     puts ""
@@ -237,14 +240,13 @@ class Human < Player
         choice.strip.empty? ||
         choice.length > 1 ||
         choice.downcase == 'o'
-      puts choice.downcase == 'o' ?
-        "Sorry, that's the computer's marker. Try again." : invalid_entry
+      if choice.downcase == 'o'
+        puts "Sorry, that's the computer's marker. Try again."
+      else
+        puts "Entries must be exactly 1 character in length. Try again."
+      end
     end
     self.marker = choice
-  end
-
-  def invalid_entry
-    "Entries must be exactly 1 character in length. Try again."
   end
 
   def move(board)
@@ -270,11 +272,9 @@ class Human < Player
       arr.join(delim)
     end
   end
-
 end
 
 class Computer < Player
-
   def set_name
     self.name = ['Hal', 'R2D2', 'Chappie'].sample
   end
@@ -285,9 +285,9 @@ class Computer < Player
 
   def moves(board)
     if board.opportune_square(marker)
-      board[(board.get_key(board.opportune_square(marker)))] = marker
+      board[board.get_key(board.opportune_square(marker))] = marker
     elsif board.at_risk_square(marker)
-      board[(board.get_key(board.at_risk_square(marker)))] = marker
+      board[board.get_key(board.at_risk_square(marker))] = marker
     elsif board.middle_empty?
       board[5] = marker
     else
@@ -338,30 +338,10 @@ class TTTGame
     loop do
       puts "Would you like to go first? (y/n)"
       response = gets.chomp
-      break if %w(y n).include?(response)
+      break if ['y', 'n'].include?(response)
       puts "Invalid entry. Try again."
     end
-    return response == 'y' ? human : computer
-  end
-
-  def game_loop
-    loop do
-      if human_turn?
-        clear_screen
-        display_scoreboard
-        display_board
-      end
-      loop do
-        current_player_moves
-        break if board.full? || board.someone_won?
-        clear_screen_and_display_board if human_turn?
-      end
-      display_result
-      update_score
-      break if scoreboard.match_won?
-      break unless play_next_game?
-      board_reset
-    end
+    response == 'y' ? human : computer
   end
 
   def match_loop
@@ -373,6 +353,30 @@ class TTTGame
       break unless play_again?
       board_reset
       scoreboard.reset
+    end
+  end
+
+  def game_loop
+    loop do
+      if human_turn?
+        clear_screen
+        display_scoreboard
+        display_board
+      end
+      turn_loop
+      display_result
+      update_score
+      break if scoreboard.match_won?
+      break unless play_next_game?
+      board_reset
+    end
+  end
+
+  def turn_loop
+    loop do
+      current_player_moves
+      break if board.full? || board.someone_won?
+      clear_screen_and_display_board if human_turn?
     end
   end
 
@@ -452,7 +456,7 @@ class TTTGame
   end
 
   def human_turn?
-    self.current_player == human
+    current_player == human
   end
 
   def play_again?
