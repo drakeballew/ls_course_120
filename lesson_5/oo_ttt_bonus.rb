@@ -71,38 +71,25 @@ class Board
     markers.min == markers.max
   end
 
-  def square_at_risk?(squares, cpu_marker)
-    markers = squares.select { |sq| sq.marker == cpu_marker }.collect(&:marker)
-    unmarked = squares.select(&:unmarked?).collect(&:marker)
-    return true if markers.empty? && unmarked.size == 1
-    false
-  end
-
-  def at_risk_square(marker)
+  def proactive_move(marker, off_def)
     WINNING_LINES.each do |line|
       squares = @squares.values_at(*line)
-      if square_at_risk?(squares, marker)
+      if opportune_or_risky_square?(squares, marker, off_def)
         return squares.select { |sq| sq.marker == Square::INITIAL_MARKER }.first
       end
     end
     nil
   end
 
-  def opportune_square?(squares, cpu_marker)
+  def opportune_or_risky_square?(squares, cpu_marker, off_def)
     markers = squares.select { |sq| sq.marker == cpu_marker }.collect(&:marker)
     unmarked = squares.select(&:unmarked?).collect(&:marker)
-    return true if markers.size == 2 && unmarked.size == 1
-    false
-  end
-
-  def opportune_square(marker)
-    WINNING_LINES.each do |line|
-      squares = @squares.values_at(*line)
-      if opportune_square?(squares, marker)
-        return squares.select { |sq| sq.marker == Square::INITIAL_MARKER }.first
-      end
+    if off_def == 'O'
+      return true if markers.size == 2 && unmarked.size == 1
+    elsif off_def == 'D'
+      return true if markers.empty? && unmarked.size == 1
     end
-    nil
+    false
   end
 
   def middle_empty?
@@ -284,10 +271,10 @@ class Computer < Player
   end
 
   def moves(board)
-    if board.opportune_square(marker)
-      board[board.get_key(board.opportune_square(marker))] = marker
-    elsif board.at_risk_square(marker)
-      board[board.get_key(board.at_risk_square(marker))] = marker
+    if board.proactive_move(marker, 'O')
+      board[board.get_key(board.proactive_move(marker, 'O'))] = marker
+    elsif board.proactive_move(marker, 'D')
+      board[board.get_key(board.proactive_move(marker, 'D'))] = marker
     elsif board.middle_empty?
       board[5] = marker
     else
