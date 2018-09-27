@@ -364,8 +364,9 @@ class TTTGame
         display_board
       end
       turn_loop
-      display_result
       update_score
+      display_result
+
       break if scoreboard.match_won?
       break unless play_next_game?
       board_reset
@@ -374,10 +375,10 @@ class TTTGame
 
   def turn_loop
     loop do
-      current_player_moves
-      break if board.full? || board.someone_won?
-      clear_screen_and_display_board if human_turn?
-    end
+        current_player_moves
+        break if board.full? || board.someone_won?
+        clear_screen_and_display_board if human_turn?
+      end
   end
 
   def display_welcome_message
