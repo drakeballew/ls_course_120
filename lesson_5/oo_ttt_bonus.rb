@@ -98,8 +98,7 @@ class Board
 end
 
 class Scoreboard
-  attr_reader :player1, :player2
-  attr_accessor :games, :sets
+  attr_reader :player1, :player2, :games, :sets
 
   def initialize(player1, player2)
     @player1 = player1
@@ -334,9 +333,7 @@ class TTTGame
   def match_loop
     loop do
       game_loop
-      if scoreboard.match_won?
-        scoreboard.match_end_message
-      end
+      scoreboard.match_end_message if scoreboard.match_won?
       break unless play_again?
       board_reset
       scoreboard.reset
@@ -394,6 +391,7 @@ class TTTGame
 
   def clear_screen
     system 'clear'
+    system 'cls'
   end
 
   def clear_screen_and_display_board
